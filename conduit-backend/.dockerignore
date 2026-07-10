@@ -1,0 +1,16 @@
+# Python
+.venv
+__pycache__/
+*.pyc
+.python-version
+
+# Django
+db.sqlite3
+staticfiles/
+
+# Environment variables
+.env
+
+# Other
+README.md
+.github/
