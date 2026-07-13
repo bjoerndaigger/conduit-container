@@ -137,6 +137,8 @@ CORS_ORIGIN_WHITELIST = (
     'localhost:4000',
     '0.0.0.0:4200',
     'localhost:4200',
+    'localhost:8080',
+    'localhost:4200',
 )
 
 # Tell Django about the custom `User` model we created. The string
