@@ -1,0 +1,13 @@
+# Node
+node_modules/
+.angular/
+
+# Git
+.git/
+.github/
+.husky/
+
+# Other
+README.md
+CODE_OF_CONDUCT.md
+LICENSE
