@@ -4,7 +4,8 @@ COPY package.json yarn.lock ./
 RUN yarn install
 COPY . .
 
-ARG API_URL=http://localhost:8000/api
+# Must be set via docker-compose.yaml (build-args)
+ARG API_URL
 RUN sed -i "s|__API_URL__|${API_URL}|g" src/environments/environment.ts
 
 RUN yarn build
