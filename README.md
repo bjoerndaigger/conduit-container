@@ -18,7 +18,6 @@ The purpose of this repository is to provide a reproducible local development en
 
 * [Quickstart](#quickstart)
 * [Usage](#usage)
-
   * [Configuration](#configuration)
   * [Changing the API URL](#changing-the-api-url)
   * [Changing Ports](#changing-ports)
@@ -34,14 +33,15 @@ The purpose of this repository is to provide a reproducible local development en
 * Docker
 * Docker Compose (v2)
 
-## Start the application
-
+## Setup
 ```bash
 git clone https://github.com/bjoerndaigger/conduit-container
 cd conduit-container
-
 cp .env.template .env
+```
 
+## Start the application
+```bash
 docker compose up --build
 ```
 
