@@ -47,11 +47,11 @@ docker compose up --build
 
 After the containers have started, the application is available at:
 
-| Service      | URL                              |
-| ------------ | --------------------------------- |
-| Frontend     | http://<host>:8282                |
-| Backend API  | http://<host>:8000/api            |
-| Django Admin | http://<host>:8000/admin          |
+| Service      | URL                                |
+| ------------ | ----------------------------------- |
+| Frontend     | `http://<host>:8282`                |
+| Backend API  | `http://<host>:8000/api`            |
+| Django Admin | `http://<host>:8000/admin`          |
 
 Replace `<host>` with `localhost` (local setup) or your server's domain/IP (remote deployment).
 
