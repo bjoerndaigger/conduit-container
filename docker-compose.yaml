@@ -16,6 +16,8 @@ services:
 
   backend:
     build: ./conduit-backend
+    # Build the image locally and assign a custom name for reuse
+    image: my-conduit-backend:latest
     restart: unless-stopped
     environment:  
       POSTGRES_DB: ${POSTGRES_DB}
@@ -43,6 +45,7 @@ services:
       context: ./conduit-frontend
       args:
         API_URL: ${API_URL}
+    image: my-conduit-frontend:latest
     restart: unless-stopped
     ports:
       - "8282:80"
