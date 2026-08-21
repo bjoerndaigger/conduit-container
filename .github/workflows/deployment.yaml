@@ -1,0 +1,101 @@
+name: Build and deploy
+
+on:
+    push:
+        branches: [main, feature/deployment-pipeline]
+    # Enables manual trigger via Actions tab
+    # Only available once this file exists on the default branch (main)
+    workflow_dispatch:
+
+# Permissions for GHCR
+permissions:
+    contents: read
+    packages: write
+
+jobs:
+    build-backend:
+        runs-on: ubuntu-latest
+        steps:
+            -
+                name: Checkout repositoy
+                # Clone the repository into the runner so following steps can access the source code
+                # https://github.com/actions/checkout
+                uses: actions/checkout@v7
+            - 
+                name: Login to GHCR
+                # Authenticate against GitHub Container Registry using the auto-generated token
+                # https://github.com/docker/login-action
+                uses: docker/login-action@v4
+                with:
+                    registry: ghcr.io
+                    username: ${{ github.actor }}
+                    password: ${{ secrets.GITHUB_TOKEN }}
+            -
+                name: Build and push backend image
+                # Build the backend Docker image and push it to GHCR
+                # https://github.com/docker/build-push-action
+                uses: docker/build-push-action@v7
+                with:
+                    context: ./conduit-backend
+                    push: true
+                    # Image name and tag used by docker-compose.prod.yaml on the VM
+                    tags: ghcr.io/bjoerndaigger/conduit-backend:latest
+
+
+    build-frontend:
+        runs-on: ubuntu-latest
+        steps:
+            -
+                name: Checkout repositoy
+                uses: actions/checkout@v7
+            - 
+                name: Login to GHCR
+                uses: docker/login-action@v4
+                with:
+                    registry: ghcr.io
+                    username: ${{ github.actor }}
+                    password: ${{ secrets.GITHUB_TOKEN }}
+            -
+                name: Build and push frontend image
+                uses: docker/build-push-action@v7
+                with:
+                    context: ./conduit-frontend
+                    build-args: |
+                        API_URL=${{ vars.API_URL }}
+                    push: true
+                    tags: ghcr.io/bjoerndaigger/conduit-frontend:latest
+
+    deploy:
+        needs: [build-backend, build-frontend]   # waits for both builds
+        runs-on: ubuntu-latest
+        steps:
+            -
+                name: Checkout repositoy
+                # Clone the repository into the runner so the compose file can be copied to the VM
+                uses: actions/checkout@v7
+            -
+                name: Copy compose file to VM
+                # Copy docker-compose.prod.yaml to the target VM 
+                # https://github.com/appleboy/scp-action
+                uses: appleboy/scp-action@v1
+                with:
+                    host: ${{ secrets.SSH_HOST }}
+                    username: ${{ secrets.SSH_USER }}
+                    key: ${{ secrets.SSH_PRIVATE_KEY }}
+                    source: "docker-compose.prod.yaml"
+                    target: "/home/${{ secrets.SSH_USER }}/projects/conduit-container"
+            -
+                name: SSH and deploy
+                # Open an SSH connection to the VM, pull the new images and restart the containers
+                # https://github.com/appleboy/ssh-action
+                uses: appleboy/ssh-action@v1
+                with:
+                    host: ${{ secrets.SSH_HOST }}
+                    username: ${{ secrets.SSH_USER }}
+                    key: ${{ secrets.SSH_PRIVATE_KEY }}
+                    script: |
+                        set -e
+                        cd /home/${{ secrets.SSH_USER }}/projects/conduit-container
+                        docker compose -f docker-compose.prod.yaml pull
+                        docker compose -f docker-compose.prod.yaml down
+                        docker compose -f docker-compose.prod.yaml up -d
