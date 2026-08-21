@@ -22,6 +22,7 @@ The purpose of this repository is to provide a reproducible local development en
   * [Changing the API URL](#changing-the-api-url)
   * [Changing Ports](#changing-ports)
   * [Docker Logs](#docker-logs)
+* [Deployment](#deployment)
 * [Project Structure](#project-structure)
 
 ---
@@ -147,6 +148,45 @@ Save the logs of a service to a file:
 ```bash
 docker compose logs backend > conduit-backend-logs.txt
 ```
+
+---
+
+# Deployment
+
+The application is automatically built and deployed to a remote VM via a GitHub Actions workflow (`.github/workflows/deployment.yaml`) on every push to `main`.
+
+The workflow performs the following steps:
+
+1. Build backend and frontend Docker images
+2. Push images to GitHub Container Registry (GHCR)
+3. Copy `docker-compose.prod.yaml` to the target VM via SCP
+4. Connect to the VM via SSH and run:
+```bash
+   docker compose -f docker-compose.prod.yaml pull
+   docker compose -f docker-compose.prod.yaml down
+   docker compose -f docker-compose.prod.yaml up -d
+```
+
+## Required Secrets
+
+Configure the following under Settings → Secrets and variables → Actions:
+
+| Name              | Type     | Purpose                          |
+| ----------------- | -------- | --------------------------------- |
+| `SSH_HOST`         | Secret   | Target VM address                |
+| `SSH_USER`         | Secret   | SSH user on the VM                |
+| `SSH_PRIVATE_KEY`  | Secret   | Private key for SSH access        |
+| `API_URL`          | Variable | Backend URL baked into frontend build |
+
+## Initial Setup
+
+On first deployment, the `.env` file must be placed manually on the VM, since it is not committed to the repository and the workflow does not create or transfer it:
+
+```bash
+scp .env <user>@<host>:/home/<user>/projects/conduit-container/
+```
+
+Subsequent deployments reuse this file automatically, since the workflow only replaces `docker-compose.prod.yaml` and leaves `.env` untouched.
 
 ---
 
