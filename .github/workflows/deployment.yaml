@@ -2,7 +2,7 @@ name: Build and deploy
 
 on:
     push:
-        branches: [main, feature/deployment-pipeline]
+        branches: main
     # Enables manual trigger via Actions tab
     # Only available once this file exists on the default branch (main)
     workflow_dispatch:
