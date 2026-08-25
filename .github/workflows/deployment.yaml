@@ -13,7 +13,7 @@ permissions:
     packages: write
 
 jobs:
-    build-backend:
+    build-and-push:
         runs-on: ubuntu-latest
         steps:
             -
@@ -43,21 +43,6 @@ jobs:
                     tags: |
                         ghcr.io/bjoerndaigger/conduit-backend:latest
                         ghcr.io/bjoerndaigger/conduit-backend:${{ github.sha }}
-
-
-    build-frontend:
-        runs-on: ubuntu-latest
-        steps:
-            -
-                name: Checkout repositoy
-                uses: actions/checkout@v7
-            - 
-                name: Login to GHCR
-                uses: docker/login-action@v4
-                with:
-                    registry: ghcr.io
-                    username: ${{ github.actor }}
-                    password: ${{ secrets.GITHUB_TOKEN }}
             -
                 name: Build and push frontend image
                 uses: docker/build-push-action@v7
@@ -71,7 +56,7 @@ jobs:
                         ghcr.io/bjoerndaigger/conduit-frontend:${{ github.sha }}
 
     deploy:
-        needs: [build-backend, build-frontend]   # waits for both builds
+        needs: [build-and-push]   # waits for frontend and backend build and push
         runs-on: ubuntu-latest
         steps:
             -
