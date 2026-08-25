@@ -22,6 +22,7 @@ The purpose of this repository is to provide a reproducible local development en
   * [Changing the API URL](#changing-the-api-url)
   * [Changing Ports](#changing-ports)
   * [Docker Logs](#docker-logs)
+* [Deployment](#deployment)
 * [Project Structure](#project-structure)
 
 ---
@@ -147,6 +148,50 @@ Save the logs of a service to a file:
 ```bash
 docker compose logs backend > conduit-backend-logs.txt
 ```
+
+---
+
+# Deployment
+
+The application is automatically built and deployed to a remote VM via a GitHub Actions workflow (`.github/workflows/deployment.yaml`) on every push to `main`.
+
+The workflow performs the following steps:
+
+1. Build backend and frontend Docker images
+2. Push images to GitHub Container Registry (GHCR)
+3. Generate a `.env` file from repository secrets
+4. Copy `docker-compose.prod.yaml` and `.env` to the target VM via SCP
+5. Connect to the VM via SSH and run:
+```bash
+   docker compose -f docker-compose.prod.yaml pull
+   docker compose -f docker-compose.prod.yaml up -d
+   docker image prune -f
+```
+
+## Required Secrets
+
+Configure the following under Settings → Secrets and variables → Actions:
+
+| Name              | Type     | Purpose                          |
+| ----------------- | -------- | --------------------------------- |
+| `SSH_HOST`         | Secret   | Target VM address                |
+| `SSH_USER`         | Secret   | SSH user on the VM                |
+| `SSH_PRIVATE_KEY`  | Secret   | Private key for SSH access        |
+| `API_URL`          | Variable | Backend URL baked into frontend build |
+| `POSTGRES_DB`      | Secret   | Database name                    |
+| `POSTGRES_USER`    | Secret   | Database user                    |
+| `POSTGRES_PASSWORD`| Secret   | Database password                |
+| `POSTGRES_HOST`    | Secret   | Database host (`database`)       |
+| `POSTGRES_PORT`    | Secret   | Database port (`5432`)           |
+| `DJANGO_SECRET_KEY`| Secret   | Django secret key                |
+| `DJANGO_DEBUG`     | Secret   | Enable/disable debug mode        |
+| `DJANGO_ALLOWED_HOSTS` | Secret | Allowed backend hosts           |
+| `CORS_ORIGIN_WHITELIST` | Secret | Allowed frontend origins       |
+| `DJANGO_SUPERUSER_USERNAME` | Secret | Admin username             |
+| `DJANGO_SUPERUSER_EMAIL` | Secret | Admin email                  |
+| `DJANGO_SUPERUSER_PASSWORD` | Secret | Admin password             |
+
+The workflow generates `.env` from these secrets during the workflow run and transfers it to the VM on every deployment.
 
 ---
 
