@@ -38,8 +38,11 @@ jobs:
                 with:
                     context: ./conduit-backend
                     push: true
-                    # Image name and tag used by docker-compose.prod.yaml on the VM
-                    tags: ghcr.io/bjoerndaigger/conduit-backend:latest
+                    # :latest is used by docker-compose.prod.yaml on the VM
+                    # SHA tag provides an immutable reference for rollback
+                    tags: |
+                        ghcr.io/bjoerndaigger/conduit-backend:latest
+                        ghcr.io/bjoerndaigger/conduit-backend:${{ github.sha }}
 
 
     build-frontend:
@@ -63,7 +66,9 @@ jobs:
                     build-args: |
                         API_URL=${{ vars.API_URL }}
                     push: true
-                    tags: ghcr.io/bjoerndaigger/conduit-frontend:latest
+                    tags: |
+                        ghcr.io/bjoerndaigger/conduit-frontend:latest
+                        ghcr.io/bjoerndaigger/conduit-frontend:${{ github.sha }}
 
     deploy:
         needs: [build-backend, build-frontend]   # waits for both builds
@@ -74,15 +79,33 @@ jobs:
                 # Clone the repository into the runner so the compose file can be copied to the VM
                 uses: actions/checkout@v7
             -
-                name: Copy compose file to VM
-                # Copy docker-compose.prod.yaml to the target VM 
+                name: Create .env file
+                # Turn the secrets into a .env file the VM can read
+                run: |
+                    cat <<EOF > .env
+                    POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+                    POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+                    POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+                    POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
+                    POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
+                    DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+                    DJANGO_DEBUG=${{ secrets.DJANGO_DEBUG }}
+                    DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }}
+                    CORS_ORIGIN_WHITELIST=${{ secrets.CORS_ORIGIN_WHITELIST }}
+                    DJANGO_SUPERUSER_USERNAME=${{ secrets.DJANGO_SUPERUSER_USERNAME }}
+                    DJANGO_SUPERUSER_EMAIL=${{ secrets.DJANGO_SUPERUSER_EMAIL }}
+                    DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
+                    EOF
+            -
+                name: Copy compose file and .env to VM
+                # Copy docker-compose.prod.yaml and the generated .env to the target VM
                 # https://github.com/appleboy/scp-action
                 uses: appleboy/scp-action@v1
                 with:
                     host: ${{ secrets.SSH_HOST }}
                     username: ${{ secrets.SSH_USER }}
                     key: ${{ secrets.SSH_PRIVATE_KEY }}
-                    source: "docker-compose.prod.yaml"
+                    source: "docker-compose.prod.yaml,.env"
                     target: "/home/${{ secrets.SSH_USER }}/projects/conduit-container"
             -
                 name: SSH and deploy
@@ -97,5 +120,6 @@ jobs:
                         set -e
                         cd /home/${{ secrets.SSH_USER }}/projects/conduit-container
                         docker compose -f docker-compose.prod.yaml pull
-                        docker compose -f docker-compose.prod.yaml down
                         docker compose -f docker-compose.prod.yaml up -d
+                        # remove unused images to save disk space on the VM
+                        docker image prune -f

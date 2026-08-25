@@ -159,12 +159,13 @@ The workflow performs the following steps:
 
 1. Build backend and frontend Docker images
 2. Push images to GitHub Container Registry (GHCR)
-3. Copy `docker-compose.prod.yaml` to the target VM via SCP
-4. Connect to the VM via SSH and run:
+3. Generate a `.env` file from repository secrets
+4. Copy `docker-compose.prod.yaml` and `.env` to the target VM via SCP
+5. Connect to the VM via SSH and run:
 ```bash
    docker compose -f docker-compose.prod.yaml pull
-   docker compose -f docker-compose.prod.yaml down
    docker compose -f docker-compose.prod.yaml up -d
+   docker image prune -f
 ```
 
 ## Required Secrets
@@ -177,16 +178,20 @@ Configure the following under Settings → Secrets and variables → Actions:
 | `SSH_USER`         | Secret   | SSH user on the VM                |
 | `SSH_PRIVATE_KEY`  | Secret   | Private key for SSH access        |
 | `API_URL`          | Variable | Backend URL baked into frontend build |
+| `POSTGRES_DB`      | Secret   | Database name                    |
+| `POSTGRES_USER`    | Secret   | Database user                    |
+| `POSTGRES_PASSWORD`| Secret   | Database password                |
+| `POSTGRES_HOST`    | Secret   | Database host (`database`)       |
+| `POSTGRES_PORT`    | Secret   | Database port (`5432`)           |
+| `DJANGO_SECRET_KEY`| Secret   | Django secret key                |
+| `DJANGO_DEBUG`     | Secret   | Enable/disable debug mode        |
+| `DJANGO_ALLOWED_HOSTS` | Secret | Allowed backend hosts           |
+| `CORS_ORIGIN_WHITELIST` | Secret | Allowed frontend origins       |
+| `DJANGO_SUPERUSER_USERNAME` | Secret | Admin username             |
+| `DJANGO_SUPERUSER_EMAIL` | Secret | Admin email                  |
+| `DJANGO_SUPERUSER_PASSWORD` | Secret | Admin password             |
 
-## Initial Setup
-
-On first deployment, the `.env` file must be placed manually on the VM, since it is not committed to the repository and the workflow does not create or transfer it:
-
-```bash
-scp .env <user>@<host>:/home/<user>/projects/conduit-container/
-```
-
-Subsequent deployments reuse this file automatically, since the workflow only replaces `docker-compose.prod.yaml` and leaves `.env` untouched.
+The workflow generates `.env` from these secrets during the workflow run and transfers it to the VM on every deployment.
 
 ---
 
